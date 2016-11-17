@@ -1,0 +1,23 @@
+program;
+global int hola;
+
+int func hola1() {
+	return 1;
+}
+
+main{
+  int A;
+  A = 0;
+  string str;
+  str = "Hola bro"+'x';
+
+  print(str);
+  print("hola");
+  hola = 5;
+  while (A < 10)
+  {
+  	print(A);
+  	A = A + 1;
+  }
+ print(hola);
+}

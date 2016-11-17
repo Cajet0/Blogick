@@ -1,0 +1,72 @@
+program;
+
+global int x;
+
+void func hola(int x){
+	print(6*2/1+2+5);
+
+	//int x;
+
+	if(x==z){
+		while(x!=2){
+			x=4;
+		}
+	}
+	elif(false && false){
+		x=1+a[x+1];
+	}
+}
+
+global char jesus;
+
+bool func bye(){
+	int kkk;
+	int byeasdas;
+	scan(hola);
+	x=int(x+1);
+	x=string(hola(x,ye));
+	x=char('x');
+	x=float("x");
+}
+
+global int asdasd;
+
+main {	
+	float g;
+	int y,x,z[9];
+	bool hugo;
+	char q;
+	string h;
+
+	y="xd";
+	y=true;
+	y='x';
+	y=false;
+	z[1+2] = hola(x,y);
+	y=z[4];
+	x=hola(x, y[1+2], "hehehe", 'x', 4+1);
+	x=1*2+3-4/8;
+
+	scan(z);
+
+	if(true || x > 6 && false || x+8<2+2*(y/10) && x<1 && x<=1 && x==2 && x>=6 && 9 != h || !true && !x){
+		for(1 < 10;y=1,y=8,x=10){
+		}
+
+		while(x<=1 && false || !x){
+		}
+
+		do {
+		}while(!false);
+
+		print(1);
+	}
+	elif(true) {
+	}
+	else{
+		y=2+24;
+		return 2;
+	}
+
+	return 1;
+}

@@ -1,0 +1,26 @@
+program;
+
+global int a,d;
+global bool f;
+
+main{
+	int x,y,w,dow;
+	if (x>a){
+		d=d*1;
+	}
+	elif(!f){
+		y=a;
+	}
+	a = a*1;
+
+	while(x == x){
+		w = 1;
+	}
+	x=1;
+
+	do{
+		dow = 2;
+	}while(y==y);
+	scan(x);
+	print(x+1);
+}

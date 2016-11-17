@@ -1,0 +1,30 @@
+program;
+
+global int iA,iB;
+//global int a;
+global float fA, fB;
+//flobal bool bA,bB;
+//global string sA,sB;
+//global char cA,cB, a_5, A_a_6;
+
+int func pruebaFuncion(int i_func_a_Z, int i_func_b_Z, bool xD){
+	int i_func_a_Y;
+	i_func_a_Z = 1*2;//+a();
+	//a();
+	return i_func_a_Z;
+	return 1*2;
+}
+
+main{
+	int iZ;
+	float fZ;
+	char cZ;
+	string sZ;
+	bool bZ;
+
+	for(iA<4+3 && iB!=0;iA=5,iB=iA+1){
+		iB=iB*iB;
+		iZ=iB*iA;
+	}
+	fB=1.4;
+}

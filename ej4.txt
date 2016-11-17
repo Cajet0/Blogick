@@ -1,0 +1,29 @@
+program;
+
+global int pruebaFuncionvar;
+
+int func pruebaFuncion(float f_func_a_Z, int i_func_b_Z){
+	int i_func_a_Y;
+	if(f_func_a_Z == 5){
+		f_func_a_Z = 1.0/2;
+	}
+	return f_func_a_Z;
+	return 1*2;
+}
+
+void func pruebaFuncion2(bool bPB2, float fPB2){
+	fPB2 = 3*3*3;
+}
+
+main{
+  int a;
+  int b, c;
+  bool bul;
+  pruebaFuncion2(2 > 3, 1.0);
+
+  a=pruebaFuncion(4, 4);
+  a=5*5;
+  b=5;
+  c=a-b;
+  print(c);
+}
