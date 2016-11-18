@@ -1,0 +1,31 @@
+program;
+
+global int iX;
+global float fX;
+global char cX;
+global bool bX;
+global string sX;
+
+main{
+	iX=11;
+	fX=10;
+	cX='x';
+	bX=true;
+	sX="str";
+
+	iX = iX+1;
+	print(iX);
+	iX = iX-1;
+	print(iX);
+	iX = iX/2;
+	print(iX);
+	iX = iX*2.5;
+	print(iX);
+
+	bX=true||false;
+	print(bX);
+	bX=iX > 5;
+	print(bX);
+	bX=true&&false;
+	print(bX);
+}

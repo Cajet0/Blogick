@@ -376,7 +376,7 @@ def p_estatuto(p):
 		| RETURN exp seen_return SEMICOLON'''
 
 def p_llamafunc(p):
-	'llamafunc : ID seen_id_factor seen_llamada_func L_PARENTHESIS listargs R_PARENTHESIS seen_verifica_cant_args SEMICOLON gosub'
+	'llamafunc : ID seen_id_factor seen_llamada_func L_PARENTHESIS listargs R_PARENTHESIS seen_verifica_cant_args gosub SEMICOLON'
 
 
 # Checar que exista la variable antes del equals
@@ -387,8 +387,8 @@ def p_opesarr(p):
 	'''opesarr : L_BRACKET exp R_BRACKET
 		| e'''
 
-def p_exp(p):
-	'exp : term paso5_cuadruplo opexp'
+def p_aritmetica(p):
+	'aritmetica : term paso5_cuadruplo opexp'
 
 def p_term(p):
 	'term : factor paso4_cuadruplo opterm'
@@ -401,16 +401,16 @@ def p_factor(p):
 		| FALSE paso1_bool_cuadruplo
 		| CHR paso1_char_cuadruplo
 		| STRNG paso1_string_cuadruplo
-		| L_PARENTHESIS paso6_cuadruplo condicion R_PARENTHESIS paso7_cuadruplo'''
+		| L_PARENTHESIS paso6_cuadruplo exp R_PARENTHESIS paso7_cuadruplo'''
 
 def p_opidfactor(p):
-	'''opidfactor : L_PARENTHESIS seen_llamada_func_factor listargs R_PARENTHESIS
+	'''opidfactor : L_PARENTHESIS seen_llamada_func_factor listargs R_PARENTHESIS gosub
 		| L_BRACKET exp R_BRACKET
 		| e'''
 	p[0] = p[1] # Retorna el primer elemento de la regla
 
 def p_listargs(p):
-	'''listargs : condicion seen_argumento_funcion masargs
+	'''listargs : exp seen_argumento_funcion masargs
 		| e'''
 
 def p_masargs(p):
@@ -429,8 +429,8 @@ def p_opterm(p):
 		| e'''
 
 def p_opexp(p):
-	'''opexp : PLUS paso2y3_cuadruplos exp
-		| MINUS paso2y3_cuadruplos exp
+	'''opexp : PLUS paso2y3_cuadruplos aritmetica
+		| MINUS paso2y3_cuadruplos aritmetica
 		| e'''
 
 def p_castono(p):
@@ -453,11 +453,11 @@ def p_castto(p):
 #		| STRNG paso1_string_cuadruplo
 #		| CHR paso1_char_cuadruplo'''
 
-def p_condicion(p):
-	'condicion : exp_and if_paso3_cuadruplo listaor'
+def p_exp(p):
+	'exp : exp_and if_paso3_cuadruplo listaor'
 
 def p_listaor(p):
-	'''listaor : OR if_paso1_cuadruplo condicion
+	'''listaor : OR if_paso1_cuadruplo exp
 		| e'''
 
 def p_exp_and(p):
@@ -468,10 +468,10 @@ def p_listand(p):
 		| e'''
 
 def p_exp_bcomp(p):
-	'exp_bcomp : exp esComp'
+	'exp_bcomp : aritmetica esComp'
 
 def p_esComp(p):
-	'''esComp : bexpop if_paso6_cuadruplo exp if_paso7_cuadruplo
+	'''esComp : bexpop if_paso6_cuadruplo aritmetica if_paso7_cuadruplo
 		| e'''
 
 def p_opcnegar(p):
@@ -509,13 +509,13 @@ def p_ciclo(p):
 		| for'''
 
 def p_while(p):
-	'while : WHILE while_paso1_codigo L_PARENTHESIS condicion while_paso2_codigo R_PARENTHESIS bloque while_paso3_codigo'
+	'while : WHILE while_paso1_codigo L_PARENTHESIS exp while_paso2_codigo R_PARENTHESIS bloque while_paso3_codigo'
 
 def p_dowhile(p):
-	'dowhile : DO while_paso1_codigo bloque WHILE L_PARENTHESIS condicion R_PARENTHESIS dowhile_paso4_codigo SEMICOLON'
+	'dowhile : DO while_paso1_codigo bloque WHILE L_PARENTHESIS exp R_PARENTHESIS dowhile_paso4_codigo SEMICOLON'
 
 def p_for(p):
-	'for : FOR for_paso1_codigo L_PARENTHESIS condicion for_paso2_codigo SEMICOLON for_paso3_codigo increment for_paso4_codigo R_PARENTHESIS bloque for_paso5_codigo'
+	'for : FOR for_paso1_codigo L_PARENTHESIS exp for_paso2_codigo SEMICOLON for_paso3_codigo increment for_paso4_codigo R_PARENTHESIS bloque for_paso5_codigo'
 
 def p_increment(p):
 	'increment : asignacion listaincrement'
@@ -525,14 +525,14 @@ def p_listaincrement(p):
 		| e'''
 
 def p_if(p):
-	'if : IF L_PARENTHESIS condicion if_paso1_codigo R_PARENTHESIS bloque listaelif else if_paso2_codigo'
+	'if : IF L_PARENTHESIS exp if_paso1_codigo R_PARENTHESIS bloque listaelif else if_paso2_codigo'
 
 def p_listaelif(p):
 	'''listaelif : elif listaelif
 		| e'''
 
 def p_elif(p):
-	'elif : ELIF L_PARENTHESIS condicion if_paso4_codigo R_PARENTHESIS bloque'
+	'elif : ELIF L_PARENTHESIS exp if_paso4_codigo R_PARENTHESIS bloque'
 
 def p_else(p):
 	'''else : if_paso3_codigo ELSE bloque
@@ -805,13 +805,16 @@ def p_seen_argumento_funcion(p):
 		tipo_argumento = obtiene_tipo_dir_memoria(operando) # Obtiene el tipo de acuerdo al operando
 		arg = operando
 
-	param = tabla_func[id_funcion_llamada]['tabla_param']['.param'+str(cont_args)] # Obtiene el id del parametro
+	tabla_param_func = tabla_func[id_funcion_llamada]['tabla_param']
+	param = tabla_param_func['.param'+str(cont_args)] # Obtiene el id del parametro
 
-	if cuboSemantico[13][tabla_func[id_funcion_llamada]['tabla_param'][param]['tipo']][tipo_argumento] == 0:
+	#if cuboSemantico[13][tabla_func[id_funcion_llamada]['tabla_param'][param]['tipo']][tipo_argumento] == 0:
+	if cuboSemantico[13][tabla_param_func[param]['tipo']][tipo_argumento] == 0:
 		error_semantico(id_funcion_llamada, "Tipos de argumento y parametro incompatibles.")
 	else: # Si son compatibles
 		##################### IMPORTANTE - CAMBIAR LO QUE SE MANDA COMO PARAMETRO CHAR Y STRING #################
-		cuadruplos = np.append(cuadruplos, [[22,arg,'_','.param'+str(cont_args)]], 0)
+		#cuadruplos = np.append(cuadruplos, [[22,arg,'_','.param'+str(cont_args)]], 0)
+		cuadruplos = np.append(cuadruplos, [[22,arg,'_',tabla_param_func[param]['dir_mem']]], 0)
 
 # Verifica que cumpla con la cantidad de params en la llamada de una funcion
 def p_seen_verifica_cant_args(p):
@@ -1652,7 +1655,7 @@ def genera_archivo_obj(archivo):
 			cant_parametros = len(tabla_func[funcion]['tabla_param'])/2
 			size = len(tabla_func[funcion]['tabla_var']) + cant_parametros
 			dir_variable = tabla_func[funcion]['dir_variable']
-
+			# Funcion = nombre, tipo, dir_inicio, cat_parametros, size, dir_variable
 			contenido += nombre + " " + str(tipo) + " " + str(dir_inicio) + " " + str(cant_parametros) + " " + str(size) + " " + str(dir_variable) + "\n"
 		else:
 			print
@@ -1661,7 +1664,7 @@ def genera_archivo_obj(archivo):
 	contenido += "#\n"
 	globales = ""
 	for constante in tabla_func['global']['tabla_var']:
-		if re.match(r'[0-9].*',constante) or constante[0] == '_': # Si es float, int, char o string
+		if re.match(r'[0-9].*',constante) or constante[0] == '_' or constante == 'true' or constante =='false': # Si es float, int, char o string
 			dir_mem = tabla_func['global']['tabla_var'][constante]['dir_mem']
 			tipo = tabla_func['global']['tabla_var'][constante]['tipo']
 			#if constante[0] == '_': #Si es string o char
