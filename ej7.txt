@@ -3,12 +3,60 @@ program;
 global int gX;
 
 int func pruebaFuncion(int x){
-	return 1;
+	if (x > 1) {
+		print(x);
+		return pruebaFuncion(x-1)+1;
+	}
+	return x;
+}
+
+void func character(char a){
+	print(a);
+}
+
+void func strings(string str) {
+	print(str);
+}
+
+int func fibo(int x) {
+	print(x);
+	if(x==1){
+		return 1;
+	}
+	elif (x==0) {
+		return 0;
+	}
+	else {
+		return (fibo(x-1) + fibo(x-2));
+	}
+}
+
+int func factorial(int n) {
+	print(n);
+	if (n == 1) {
+		return n;
+	}
+	else {
+		return n * factorial(n - 1);
+	}
+}
+
+int func equal(int x) {
+	return x;
 }
 
 main{
   int a;
   a = 0;
+  int x;
+  x = 5;
   a = pruebaFuncion(4);
-  print(a);
+  print(a+5);
+  character('b');
+  strings("hola");
+  //print(fibo(5));
+  print(" ");
+  //print(factorial(5));
+
+  print(x*equal(x-1));
 }

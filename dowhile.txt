@@ -1,0 +1,23 @@
+program;
+
+main{
+	int c,next,second,first,n;
+	c=0;
+	first=0;
+	second=1;
+	n=7;
+	next=0;
+
+	do{
+		if(c<=1){
+			next=c;
+		}
+		else{
+			next = first + second;
+			first = second;
+			second = next;
+		}
+		print(next);
+		c=c+1;
+	} while(c<8);
+}

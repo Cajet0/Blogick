@@ -1,0 +1,9 @@
+program;
+
+main {
+	char x;
+	x='1';
+	print(x);
+	scan(x);
+	print(x);
+}

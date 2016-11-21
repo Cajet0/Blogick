@@ -2,8 +2,6 @@ import sys
 import re
 import numpy as np
 ############ PENDIENTES ############
-# - SI NO HAY GLOBALES DEBE SEGUIR FUNCIONANDO; TRUENA SI NO HAY GLOBALES POR EL ORDEN EN EL ARCHIVO OBJECTO
-# - 
 # EXTRAS:
 # 	- Warning: variable no utilizada.
 ####################################
@@ -24,10 +22,16 @@ linea_actual = 0
 mem_global = dict()
 
 # Memoria temporal de las funciones
-mem_temp = dict()
+# mem_temp = []
 
 # Stack de ejecucion para trabajar con modulos
 stack_ej = []
+
+# Stack que contiene las lineas en las que me quede en ejecucion
+stack_linea_ej = []
+
+# Funcion_a_llamar se guarda al momento de hacer el ERA, utilizada para asignar el valor del argumento de una funcion al mandar un parametro
+funcion_a_llamar = {}
 
 #id_operaciones = {'*':0, '/':1, '+':2, '-':3, '<':4, '>':5, '==':6, '!=':7, '<=':8, '>=':9, '&&':10, '||':11, '!':12, '=':13, 'GOTO':14, 'GOTOF':15, 
 # 'GOTOT':16, 'RETURN':17, 'ENDPROC':18, 'ERA':19, 'PRINT':20, 'SCAN':21, 'PARAM':22,'GOSUB':23}
@@ -65,6 +69,7 @@ def load_program(objFile):
 	for funcion in arr_funciones:
 		atributos = funcion.split(" ")
 		funciones[atributos[0]] = {'tipo':int(atributos[1]), 'dir_inicio':int(atributos[2]), 'params':int(atributos[3]), 'size':int(atributos[4]), 'dir_mem':int(atributos[5])}
+		#funciones[atributos[0]] = {'tipo':int(atributos[1]), 'dir_inicio':int(atributos[2]), 'params':int(atributos[3]), 'size':int(atributos[4]), 'dir_mem':None}
 
 	# Constantes
 	# Quita la ultima y la primera casilla de hacer split con salto de linea, debido a que hay saltos de linea antes y despues de las constantes
@@ -75,7 +80,6 @@ def load_program(objFile):
 
 		# Si es float
 		if re.match(r'[0-9]+\.[0-9]+', atributos[0]):
-			#constantes[atributos[2]] = {'tipo':int(atributos[1]),'valor':float(atributos[0])}
 			constantes[atributos[2]] = float(atributos[0])
 		elif atributos[0][0] == '_': 
 			# El primer caracter de la constante
@@ -86,7 +90,6 @@ def load_program(objFile):
 		elif atributos[0] == 'false':
 			constantes[atributos[2]] = False
 		else: # Si es Int
-			#constantes[atributos[2]] = {'tipo':int(atributos[1]),'valor':int(atributos[0])}
 			constantes[atributos[2]] = int(atributos[0])
 
 	# Globales
@@ -95,8 +98,6 @@ def load_program(objFile):
 	
 	for var_global in arr_globales:
 		atributos = var_global.split(" ")
-		# [0] = Nombre o valor si es una, [1] = Dir_mem, [2] = Tipo
-		#mem_global[atributos[1]] = {'nombre':atributos[0], 'tipo':int(atributos[2])}
 		mem_global[atributos[1]] = '*' # Variable sin valor
 	# Cuadruplos
 	# Quita la ultima y la primera casilla de hacer split con salto de linea, debido a que hay saltos de linea antes y despues de los cuadruplos
@@ -110,10 +111,7 @@ def load_program(objFile):
 	print(funciones)
 
 	# Mete el espacio del main en memoria temporal que es donde inicia el programa
-	#mem_temp['main'] = {'tabla_var':dict(), 'dir_mem':funciones['main']['dir_mem']}
-	mem_temp['main'] = {'tabla_var':dict()}
-	# Mete la funcion main al stack de ejecucion
-	stack_ej.append('main')
+	stack_ej.append({'nombre_func':'main', 'tabla_var':dict()})
 
 	print(cuadruplos)
 	print(constantes)
@@ -127,18 +125,16 @@ def run_program(objFile):
 
 # Ejecuta el programa
 def execute_program():
-	global linea_actual, cuadruplos, stack_ej
+	global linea_actual, cuadruplos, stack_ej, stack_linea_ej, funcion_a_llamar
+
 	# Mientras no sea la ultima linea de los cuadruplos
-	#id_operaciones = {'*':0, '/':1, '+':2, '-':3, '<':4, '>':5, '==':6, '!=':7, '<=':8, '>=':9, '&&':10, '||':11, '!':12, '=':13, 'GOTO':14, 'GOTOF':15, 
-	#'GOTOT':16, 'RETURN':17, 'ENDPROC':18, 'ERA':19, 'PRINT':20, 'SCAN':21, 'PARAM':22,'GOSUB':23}
-
-
 	print("Executing...")
 	while linea_actual < len(cuadruplos):
 		# Obtiene el cuadruplo actual
 		cuadruplo = cuadruplos[linea_actual]
 
 		# Obtiene el top del stack
+		#top_stack_ej = stack_ej[len(stack_ej)-1]
 		top_stack_ej = stack_ej[len(stack_ej)-1]
 
 		# Obtiene el operador de cuadruplos
@@ -147,78 +143,74 @@ def execute_program():
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1*val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 * val_op2
 		elif op == 1: # /
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1/val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 / val_op2
 		elif op == 2: # +
 			# Da de alta var, y la suma
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1+val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 + val_op2
 		elif op == 3: # -
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1-val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 - val_op2
 		elif op == 4: # <
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1<val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 < val_op2
 		elif op == 5: # >
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1>val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 * val_op2
 		elif op == 6: # ==
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1==val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 == val_op2
 		elif op == 7: # !=
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1!=val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 != val_op2
 		elif op == 8: # <=
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1<=val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 <= val_op2
 		elif op == 9: # >=
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1>=val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 >= val_op2
 		elif op == 10: # &&
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1 and val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 and val_op2
 		elif op == 11: # ||
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
 			val_op2 = obtiene_valor(cuadruplo[2])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = val_op1 or val_op2
+			top_stack_ej['tabla_var'][cuadruplo[3]] = val_op1 or val_op2
 		elif op == 12: # !
 			# Da de alta var, y la multiplica
 			val_op1 = obtiene_valor(cuadruplo[1])
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = not val_op1
+			top_stack_ej['tabla_var'][cuadruplo[3]] = not val_op1
 		elif op == 13: # =
 			# Da de alta variable y le asigna valor
 			# Valida si se asigna a global o local
 			if scope_asignacion(cuadruplo[3]) == 'global':
-				#print(mem_global)
 				mem_global[cuadruplo[3]] = obtiene_valor(cuadruplo[1])
-				#print(mem_global)
 			else:
-				mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = obtiene_valor(cuadruplo[1])
+				top_stack_ej['tabla_var'][cuadruplo[3]] = obtiene_valor(cuadruplo[1])
 		elif op == 14: # GOTO
-			# Agrega la funcion main al stack de ejecucion de funciones
-			# stack_ej.append(mem_global[])
 			# Se va a la linea indicada del MAIN
 			linea_actual = int(cuadruplo[3])-1
 		elif op == 15: # GOTOF
@@ -232,24 +224,78 @@ def execute_program():
 			if val_condicion:
 				linea_actual = int(cuadruplo[3])-1
 		elif op == 17: # RETURN
-			x=""
-		elif op == 18: # ENDPROC
-			x=""
+			dir_memoria = int(cuadruplo[3])
+			# Actualiza el valor de la funcion en mem_global
+			# CAMBIAR LA DIRECCION DE MEMORIA EN MEMP_TEMP A STRING O CAMBIAR A INT EN GLOBALES
+			mem_global[str(top_stack_ej['dir_mem'])] = obtiene_valor(cuadruplo[3])
+			# Me salgo del scope
+			stack_ej.pop()
+			# Me regreso a la linea en la que me quede
+			linea_actual = stack_linea_ej.pop()
+		elif op == 18: # ENDPROC - Si llego al final de la funcion
+			if top_stack_ej['nombre_func'] != 'main':
+				if mem_global[str(top_stack_ej['dir_mem'])] == '*' and funciones[top_stack_ej['nombre_func']]['tipo'] != -1:
+					print("Funcion con valor de retorno sin regresar")
+					exit()
+				# Me salgo del scope si no es main
+				stack_ej.pop()
+				#Me regreso a la linea en que me quede
+				linea_actual = stack_linea_ej.pop()
+			else: # Si es main, acabo el 
+				exit()
 		elif op == 19: # ERA
-			mem_temp[cuadruplo[3]]={'tabla_var':dit(), 'dir_mem':int(funciones[cuadruplo[3]]['dir_mem'])}
+			#mem_temp[cuadruplo[3]]={'tabla_var':dict(), 'dir_mem':int(funciones[cuadruplo[3]]['dir_mem'])}
+			#funcion_a_llamar = cuadruplo[3]
+			funcion_a_llamar={'nombre_func':cuadruplo[3], 'tabla_var':dict(), 'dir_mem':int(funciones[cuadruplo[3]]['dir_mem'])}
+
 		elif op == 20: # PRINT
 			# Imprime variable
 			print(obtiene_valor(cuadruplo[3]))
 		elif op == 21: # SCAN
-			x=""
+			scan = raw_input()
+			tipo = obtiene_tipo_dir_memoria(int(cuadruplo[3]))
+			# Valida el tipo de variable, valida y lo asigna de acuerdo al input
+			if tipo == 0:
+				try:
+					top_stack_ej['tabla_var'][cuadruplo[3]] = int(float(scan))
+				except ValueError:
+					print("Error de ejecucion: Asignacion no entera.")
+					exit()
+			elif tipo == 1:
+				try:
+					top_stack_ej['tabla_var'][cuadruplo[3]] = float(scan)
+				except ValueError:
+					print("Error de ejecucion: Asignacion no flotante.")
+					exit()
+			elif tipo == 2:	
+				if len(scan) == 1:
+					top_stack_ej['tabla_var'][cuadruplo[3]] = scan
+				else:
+					print("Error de ejecucion: No es tipo caracter.")	
+					exit()
+			elif tipo == 3:
+				if scan == 'true':
+					top_stack_ej['tabla_var'][cuadruplo[3]] = True
+				elif scan == 'false':
+					top_stack_ej['tabla_var'][cuadruplo[3]] = False
+				else:
+					print("Error de ejecucion: Asignacion no booleana.")
+					exit()
+			elif tipo == 4:
+				top_stack_ej['tabla_var'][cuadruplo[3]] = scan
 		elif op == 22: # PARAM
 			# Hacer la relacion de parametro con direccion de memoria
-			mem_temp[top_stack_ej]['tabla_var'][cuadruplo[3]] = 
+			#mem_temp[funcion_a_llamar]['tabla_var'][cuadruplo[3]] = obtiene_valor(cuadruplo[1])
+			funcion_a_llamar['tabla_var'][cuadruplo[3]] = obtiene_valor(cuadruplo[1])
 		elif op == 23: # GOSUB
-			stack_ej.append(cuadruplo[1])
+			stack_ej.append(funcion_a_llamar)
+			# Agrego el scope a la pila
+			#stack_ej.append(cuadruplo[1])
+			# Guardo la linea actual en la que llame a la funcion
+			stack_linea_ej.append(linea_actual)
+			# Actualizo la linea actual para ejecutar la funcion
 			linea_actual=int(cuadruplo[3])-1
 		linea_actual += 1
-#'GOTOT':16, 'RETURN':17, 'ENDPROC':18, 'ERA':19, 'PRINT':20, 'SCAN':21, 'PARAM':22,'GOSUB':23}
 
 def obtiene_valor(dir_memoria):
 	global mem_global, constantes, linea_actual, stack_ej
@@ -258,8 +304,6 @@ def obtiene_valor(dir_memoria):
 	int_dir = int(dir_memoria)
 	if int_dir >= 10000 and int_dir < 15000: # Si es global
 		if mem_global[dir_memoria] == '*':
-			#print(linea_actual)
-			#print(mem_global)
 			print("Error ejecucion: Variable global sin previo valor.")
 			exit()
 		return cast_resultado(mem_global[dir_memoria], int_dir)
@@ -267,7 +311,7 @@ def obtiene_valor(dir_memoria):
 		return constantes[dir_memoria]
 	else: # Si es temporal o local se considera temporal
 		try:
-			return cast_resultado(mem_temp[top_stack_ej]['tabla_var'][dir_memoria], int_dir)
+			return cast_resultado(top_stack_ej['tabla_var'][dir_memoria], int_dir)
 		except KeyError:
 			print("Error ejecucion: Variable local sin previo valor.")
 			exit()
@@ -303,7 +347,8 @@ def scope_asignacion(dir_memoria):
 	if int_dir >= 10000 and int_dir < 15000: # Si es global
 		return 'global'
 	elif int_dir < 20000: # Si es local
-		return 'temporal'
+		return 'temporal'	
+
 # Main que contiene los argumentos
 def main(argv):
 	run_program(argv[1])

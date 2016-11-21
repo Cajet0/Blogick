@@ -1,13 +1,4 @@
 from __future__ import print_function
-###### PENDIENTES - COMPILADOR ######
-# 2. Al momento de mostrar el error, desplegar el ID de la variable en vez de la DIRECCION
-# 8. Generar la dir de inicio para GOSUB, RET, etc...
-# 10. Agregar null
-
-###### PENDIENTES - EJECUCION ######
-# CHECAR HOJITA DE PROCEDIMIENTOS
-#   GOSUB - Meter la direccion de retorno en la pila de ejecucion. Transferir el control de ejeccuion a la direccion de inicio del procedimiento.
-####################################
 
 # Librerias utilizadas
 import numpy as np # Sirve para utilizar matrices y cubos
@@ -19,7 +10,7 @@ tokens = [
     'L_BRACKET','R_BRACKET','L_PARENTHESIS','R_PARENTHESIS', 'L_BRACE', 'R_BRACE',
     'L_THAN','G_THAN', 'LE_THAN', 'GE_THAN', 'DIFFERENT', 'EQUALS_C', 'NOT', 'AND', 'OR',
     'FLT', 'INT','STRNG','CHR',
-    'ID']
+    'ID', 'AMPERSAND']
 
 reserved = {
 	'for' : 'FOR',
@@ -75,10 +66,13 @@ t_NOT = r'!'
 t_AND = r'&&'
 t_OR = r'\|\|'
 
+# Operador por referencia
+t_AMPERSAND = r'&'
+
 # Tipos de datos
 t_FLT = r'[0-9]+\.[0-9]+'
 t_INT = r'[0-9]+'
-t_CHR = r'\'[^\']*\''
+t_CHR = r'\'[^\']\''
 t_STRNG = r'\"[^\"]*\"'
 
 # Caracteres a ignorar
@@ -113,6 +107,7 @@ tipo_arg = '' # Sirve para saber el tipo de un argumento
 # Pilas para generar CUADRUPLOS
 POper = [] # Sirve para mantener el orden en que se ejecutan las operaciones
 POpndo = [] # Sirve para mentener el orden de los operandos
+contElifs = 0 # Cuenta los elifs pendientes
 PSaltos = [] # Sirve para llevar el control de saltos en ejecucion
 
 # CUADRUPLOS
@@ -394,7 +389,7 @@ def p_term(p):
 	'term : factor paso4_cuadruplo opterm'
 
 def p_factor(p):
-	'''factor : ID seen_id_factor opidfactor paso1_id_cuadruplo
+	'''factor : ID opidfactor paso1_id_cuadruplo
 		| INT paso1_int_cuadruplo
 		| FLT paso1_float_cuadruplo
 		| TRUE paso1_bool_cuadruplo
@@ -404,13 +399,14 @@ def p_factor(p):
 		| L_PARENTHESIS paso6_cuadruplo exp R_PARENTHESIS paso7_cuadruplo'''
 
 def p_opidfactor(p):
-	'''opidfactor : L_PARENTHESIS seen_llamada_func_factor listargs R_PARENTHESIS gosub
+	'''opidfactor : seen_id_factor L_PARENTHESIS paso6_cuadruplo seen_llamada_func_factor listargs R_PARENTHESIS paso7_cuadruplo seen_verifica_cant_args gosub
 		| L_BRACKET exp R_BRACKET
 		| e'''
 	p[0] = p[1] # Retorna el primer elemento de la regla
 
 def p_listargs(p):
 	'''listargs : exp seen_argumento_funcion masargs
+		| AMPERSAND ID seen_argumento_ref_funcion masargs
 		| e'''
 
 def p_masargs(p):
@@ -491,12 +487,6 @@ def p_bexpop(p):
 def p_escritura(p):
 	'escritura : PRINT L_PARENTHESIS exp R_PARENTHESIS SEMICOLON seen_print'
 
-#def p_stringorexp(p):
-#	'''stringorexp : STRNG paso1_string_cuadruplo
-#		| CHR paso1_char_cuadruplo
-#		| exp'''
-#	p[0] = p[1] #Regresa el valor de la regla
-
 def p_scan(p):
 	'scan : SCAN L_PARENTHESIS ID R_PARENTHESIS SEMICOLON seen_scan'
 
@@ -515,7 +505,7 @@ def p_dowhile(p):
 	'dowhile : DO while_paso1_codigo bloque WHILE L_PARENTHESIS exp R_PARENTHESIS dowhile_paso4_codigo SEMICOLON'
 
 def p_for(p):
-	'for : FOR for_paso1_codigo L_PARENTHESIS exp for_paso2_codigo SEMICOLON for_paso3_codigo increment for_paso4_codigo R_PARENTHESIS bloque for_paso5_codigo'
+	'for : FOR for_paso1_codigo L_PARENTHESIS exp for_paso2_codigo SEMICOLON for_paso3_codigo increment for_paso4_codigo R_PARENTHESIS for_paso6_codigo bloque for_paso5_codigo'
 
 def p_increment(p):
 	'increment : asignacion listaincrement'
@@ -525,18 +515,18 @@ def p_listaincrement(p):
 		| e'''
 
 def p_if(p):
-	'if : IF L_PARENTHESIS exp if_paso1_codigo R_PARENTHESIS bloque listaelif else if_paso2_codigo'
+	'if : IF L_PARENTHESIS exp if_paso1_codigo R_PARENTHESIS bloque if_paso2_codigo listaelif else if_paso3_codigo'
 
 def p_listaelif(p):
 	'''listaelif : elif listaelif
 		| e'''
 
 def p_elif(p):
-	'elif : ELIF L_PARENTHESIS exp if_paso4_codigo R_PARENTHESIS bloque'
+	'elif : ELIF L_PARENTHESIS exp if_paso1_codigo R_PARENTHESIS bloque if_paso2_codigo'
 
 def p_else(p):
-	'''else : if_paso3_codigo ELSE bloque
-		| e'''
+	'''else : ELSE bloque
+		| e if_paso4_codigo'''
 
 # Despliega error a nivel sintaxis
 def p_error(p):
@@ -808,13 +798,50 @@ def p_seen_argumento_funcion(p):
 	tabla_param_func = tabla_func[id_funcion_llamada]['tabla_param']
 	param = tabla_param_func['.param'+str(cont_args)] # Obtiene el id del parametro
 
-	#if cuboSemantico[13][tabla_func[id_funcion_llamada]['tabla_param'][param]['tipo']][tipo_argumento] == 0:
+	# Checa el tipo de parametro de la funcion con el tipo del argumento
 	if cuboSemantico[13][tabla_param_func[param]['tipo']][tipo_argumento] == 0:
 		error_semantico(id_funcion_llamada, "Tipos de argumento y parametro incompatibles.")
 	else: # Si son compatibles
 		##################### IMPORTANTE - CAMBIAR LO QUE SE MANDA COMO PARAMETRO CHAR Y STRING #################
 		#cuadruplos = np.append(cuadruplos, [[22,arg,'_','.param'+str(cont_args)]], 0)
 		cuadruplos = np.append(cuadruplos, [[22,arg,'_',tabla_param_func[param]['dir_mem']]], 0)
+
+def p_seen_argumento_ref_funcion(p):
+	'seen_argumento_ref_funcion :'
+	# p[-1] = Argumento por referencia
+	global cont_args, id_funcion_llamada, tipo_arg, POpndo, cuadruplos
+	cont_args += 1
+	
+	arg_ref = p[-1] # Argumento que se asigna en la regla
+
+	tipo_argumento = ''
+
+	if cont_args > len(tabla_func[id_funcion_llamada]['tabla_param'])/2: # Se divide entre 2 debido a que genera el nombre del param y .param#num_param cada vez que encuentra un param
+		error_semantico(id_funcion_llamada, "Exceso de argumentos.")
+	else:
+		#operando = POpndo.pop() # Obtiene el ultimo operando
+
+		# Checa si es variable global o local
+		if arg_ref in tabla_func['global']['tabla_var']:
+			operando = tabla_func['global']['tabla_var'][arg_ref]['dir_mem']
+		elif arg_ref in tabla_func[nombre_func]['tabla_var']:
+			operando = tabla_func[nombre_func]['tabla_var'][arg_ref]['dir_mem']
+		else:
+			error_semantico(arg_ref, "Variable no declarada al enviar parametro por referencia.")
+
+		tipo_argumento = obtiene_tipo_dir_memoria(operando) # Obtiene el tipo de acuerdo al operando
+		arg_ref = operando
+
+	tabla_param_func = tabla_func[id_funcion_llamada]['tabla_param']
+	param = tabla_param_func['.param'+str(cont_args)] # Obtiene el id del parametro y lo asigna a param
+
+	# Checa el tipo de parametro de la funcion con el tipo del argumento
+	if cuboSemantico[13][tabla_param_func[param]['tipo']][tipo_argumento] == 0:
+		error_semantico(id_funcion_llamada, "Tipos de argumento y parametro incompatibles.")
+	else: # Si son compatibles
+		##################### IMPORTANTE - CAMBIAR LO QUE SE MANDA COMO PARAMETRO CHAR Y STRING #################
+		#cuadruplos = np.append(cuadruplos, [[22,arg,'_','.param'+str(cont_args)]], 0)
+		cuadruplos = np.append(cuadruplos, [[22,arg,'_','&'+str(tabla_param_func[param]['dir_mem'])]], 0)
 
 # Verifica que cumpla con la cantidad de params en la llamada de una funcion
 def p_seen_verifica_cant_args(p):
@@ -860,23 +887,26 @@ def p_seen_dir_inicio(p):
 # Meter ID en POpndo
 def p_paso1_id_cuadruplo(p):
 	'paso1_id_cuadruplo :'
-	global POpndo
+	global POpndo, cuadruplos
 	# p[-1] = Arreglo, Variable o funcion
-	# p[-3] = ID
+	# p[-2] = ID
 
-	ID = p[-3]
+	ID = p[-2]
 	
-
 	# Cambio-DIR
 	if ID in tabla_func[nombre_func]['tabla_var']:
 		POpndo.append(tabla_func[nombre_func]['tabla_var'][ID]['dir_mem'])
 	elif ID in tabla_func[nombre_func]['tabla_param']:
 		POpndo.append(tabla_func[nombre_func]['tabla_param'][ID]['dir_mem'])
 	elif ID in tabla_func['global']['tabla_var']:
-		POpndo.append(tabla_func['global']['tabla_var'][ID]['dir_mem'])
+		if ID in tabla_func:
+			dir_memoria = tabla_func['global']['tabla_var'][ID]['dir_mem']
+			tipo = obtiene_tipo_dir_memoria(dir_memoria)
+			genera_cuadruplos_temporal(13, dir_memoria, '_', tipo)
+		else:
+			POpndo.append(tabla_func['global']['tabla_var'][ID]['dir_mem'])
 	else:
-		m = "Variable no declarada"
-		error_semantico(ID, m)
+		error_semantico(ID, "Variable no declarada")
 
 
 	# Preparado para arreglos y funciones
@@ -1185,9 +1215,16 @@ def p_seen_scan(p):
 	# p[-3] = variable del scan
 	global cuadruplos
 
-	# PENDIENTE - Verificar que el ID sea una variable y no una funcion
+	ID = p[-3]
 
-	cuadruplos = np.append(cuadruplos, [[21,'_','_',p[-3]]], 0)
+	if ID in tabla_func[nombre_func]['tabla_var']:
+		dir_mem = tabla_func[nombre_func]['tabla_var'][ID]['dir_mem']
+		if ID not in tabla_func:
+			cuadruplos = np.append(cuadruplos, [[21,'_','_', dir_mem]], 0)
+		else:
+			error_semantico(ID, "No puedes leer en una funcion.")
+	else:
+		error_semantico(ID, "Variable utilizada no declarada en scan.")
 
 
 ############### GENERACION CODIGO ESTATUTO - LECTURA ##########################
@@ -1213,16 +1250,16 @@ def p_seen_print(p):
 
 def p_if_paso1_codigo(p):
 	'if_paso1_codigo :'
-	global POpndo
-	global cuadruplos
-	global PSaltos
+	global POpndo, PSaltos
+	global cuadruplos, contElifs
 
 	condicion = POpndo.pop()
 
 	# Checa que el tipo de la ultima variable temporal que arrojo condicion sea booleano
 	tipo_ultimo_temporal = obtiene_tipo_dir_memoria(condicion)
+
 	if tipo_ultimo_temporal != 3:
-		error_semantico(condicion, "No booleano")
+		error_semantico(condicion, "Expresion no booleana.")
 	else:
 		cuadruplos = np.append(cuadruplos, [[15, condicion, '_','_']], 0)
 		PSaltos.append(len(cuadruplos)-1)
@@ -1230,38 +1267,86 @@ def p_if_paso1_codigo(p):
 def p_if_paso2_codigo(p):
 	'if_paso2_codigo :'
 	global PSaltos
-	global cuadruplos
+	global cuadruplos, contElifs
 
+	cuadruplos = np.append(cuadruplos, [[14, '_', '_','_']], 0)
+	contElifs += 1
 	salida = PSaltos.pop()
 	cuadruplos[salida][3] = len(cuadruplos)
+	PSaltos.append(len(cuadruplos)-1)
 
 def p_if_paso3_codigo(p):
 	'if_paso3_codigo :'
-	global PSaltos
-	global cuadruplos
-
-	falso = PSaltos.pop()
-
-	cuadruplos = np.append(cuadruplos, [[14, '_', '_', '_']], 0)
-	PSaltos.append(len(cuadruplos)-1)
-
-	cuadruplos[falso][3] = len(cuadruplos)
+	global PSaltos, cuadruplos, contElifs
+	while contElifs > 0:
+		goto = PSaltos.pop()
+		cuadruplos[goto][3] = len(cuadruplos)
+		contElifs -= 1;
 
 def p_if_paso4_codigo(p):
 	'if_paso4_codigo :'
-	global PSaltos, cuadruplos, POpndo
+	global cuadruplos, PSaltos
+	ultimo_go_to = PSaltos.pop()
+	cuadruplos = np.delete(cuadruplos, ultimo_go_to, 0)
 
-	condicion = POpndo.pop()
 
-	# Checa que el tipo de la ultima variable temporal que arrojo condicion sea booleano
-	if tabla_func['global']['tabla_var'][condicion]['tipo'] != 3:
-		error_semantico(condicion, "No booleano")
-	else:
-		falso = PSaltos.pop()
-		cuadruplos = np.append(cuadruplos, [[15, condicion, '_','_']], 0)
-		PSaltos.append(len(cuadruplos)-1)
-		cuadruplos[falso][3] = len(cuadruplos)
+# def p_if_paso3_codigo(p):
+# 	'if_paso3_codigo :'
+# 	global PSaltos
+# 	global cuadruplos, contElifs
 
+# 	primer_goto = PSaltos.pop()
+# 	falso = PSaltos.pop()
+# 	PSaltos.append(primer_goto)
+
+# 	gotos = []
+# 	cont_gotos = contElifs
+# 	while cont_gotos > 0:
+# 		gotos.append(PSaltos.pop())
+# 		cont_gotos = cont_gotos - 1
+# 	imprime_cuadruplo()
+
+# 	cuadruplos = np.append(cuadruplos, [[14, '_', '_', '_']], 0)
+# 	PSaltos.append(len(cuadruplos)-1)
+
+# 	cuadruplos[falso][3] = len(cuadruplos)
+
+# 	print(gotos)
+# 	print(contElifs)
+# 	while contElifs > 0:
+# 		print(contElifs)
+# 		print(gotos)
+# 		goto = gotos.pop()
+# 		cuadruplos[goto][3] = len(cuadruplos)+1
+# 		contElifs = contElifs - 1
+
+
+# def p_if_paso4_codigo(p):
+# 	'if_paso4_codigo :'
+# 	global PSaltos, cuadruplos, POpndo, contElifs
+
+# 	condicion = POpndo.pop()
+
+# 	# Checa que el tipo de la ultima variable temporal que arrojo condicion sea booleano
+# 	#if tabla_func['global']['tabla_var'][condicion]['tipo'] != 3:
+# 	if obtiene_tipo_dir_memoria(condicion) != 3:
+# 		error_semantico(condicion, "No booleano")
+# 	else:
+# 		goto_pendiente = PSaltos.pop()
+# 		falso = PSaltos.pop()
+# 		PSaltos.append(goto_pendiente)
+
+# 		cuadruplos = np.append(cuadruplos, [[15, condicion, '_','_']], 0)
+# 		PSaltos.append(len(cuadruplos)-1)
+# 		cuadruplos[falso][3] = len(cuadruplos)-2
+
+# def p_if_paso5_codigo(p):
+# 	'if_paso5_codigo :'
+# 	global PSaltos, cuadruplos, POpndo, contElifs
+
+# 	cuadruplos = np.append(cuadruplos, [[14, '_', '_','_']], 0)	
+# 	PSaltos.append(len(cuadruplos)-1)
+# 	contElifs += 1
 ############### GENERACION CODIGO ESTATUTO - WHILE y DO WHILE ##########################
 # NOTA: Do while utiliza while_paso1_codigo y dowhile_paso4_codigo
 def p_while_paso1_codigo(p):
@@ -1296,6 +1381,7 @@ def p_while_paso3_codigo(p):
 def p_dowhile_paso4_codigo(p):
 	'dowhile_paso4_codigo :'
 	global POpndo, PSaltos, cuadruplos
+	condicion = POpndo.pop()
 
 	tipo_condicion = obtiene_tipo_dir_memoria(condicion)
 
@@ -1350,9 +1436,17 @@ def p_for_paso5_codigo(p):
 	incrementa = PSaltos.pop()
 	falso = PSaltos.pop()
 
-	cuadruplos[incrementa][3] = len(cuadruplos)-1
 	cuadruplos = np.append(cuadruplos, [[14, '_', '_', incrementa+1]], 0)
 	cuadruplos[falso][3] = len(cuadruplos)
+
+def p_for_paso6_codigo(p):
+	'for_paso6_codigo :'
+	global PSaltos, cuadruplos
+	incrementa = PSaltos[len(PSaltos)-1]
+
+	cuadruplos[incrementa][3] = len(cuadruplos)
+
+
 
 #######################################################
 ############## FUNCIONES AUXILIARES ##########################
@@ -1430,7 +1524,7 @@ def obtiene_tipo_dir_memoria(dir_memoria):
 	elif residuo < 5000:
 		return 4
 
-
+# Tipo: indica el tipo de temporal que es
 def genera_cuadruplos_temporal(operador, opdo1, opdo2, tipo):
 	global cuadruplos, contResCuadruplos
 	global nombre_func
@@ -1662,7 +1756,7 @@ def genera_archivo_obj(archivo):
 
 	# Agrega las constantes al archivo obj
 	contenido += "#\n"
-	globales = ""
+	globales = "void 0 *\n"
 	for constante in tabla_func['global']['tabla_var']:
 		if re.match(r'[0-9].*',constante) or constante[0] == '_' or constante == 'true' or constante =='false': # Si es float, int, char o string
 			dir_mem = tabla_func['global']['tabla_var'][constante]['dir_mem']

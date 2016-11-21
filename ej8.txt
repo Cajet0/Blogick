@@ -1,0 +1,62 @@
+program;
+
+int func fibo(int x) {
+	if(x==1){
+		return 1;
+	}
+	elif (x==0) {
+		return 0;
+	}
+	else {
+		return fibo(x-1) + fibo(x-2);
+	}
+}
+
+int func fact(int x) {
+	if (x == 1) {
+		return 1;
+	}
+	else {
+		return x * fact(x-1);
+	}
+}
+
+main{
+	int x, f, i;
+
+	x = 5;
+
+	print(fibo(6));
+	print(fact(5));
+
+	i = 1;
+	f = 1;
+
+	for(i<=6;i = i + 1)
+	{	
+		f = i * f;
+	}
+	print(f);
+
+
+	int c,next,second,first,n;
+	c=0;
+	first=0;
+	second=1;
+	n=7;
+	next=0;
+
+	do{
+		if(c<=1){
+			next=c;
+		}
+		else{
+			next = first + second;
+			first = second;
+			second = next;
+		}
+		print(next);
+		c=c+1;
+	} while(c<8);
+
+}
